@@ -1,0 +1,92 @@
+﻿@page "/Tabla2"
+
+@using System.Net.Http.Json
+@using BibliotecaAeshtetic.Data
+@using MudBlazor.Examples.Data.Models
+@inject HttpClient _client;
+
+<MudButton OnClick="(args)=>AgregarNuevoRegistro()" Variant="Variant.Filled" Color="Color.Secondary" >Añadir</MudButton>
+
+<MudDataGrid T="Imagen" Items="@imagens" ReadOnly="@_readOnly" EditMode="@(_isCellEditMode ? DataGridEditMode.Cell : DataGridEditMode.Form)"
+    StartedEditingItem="@StartedEditingItem" CancelledEditingItem="@CancelledEditingItem" CommittedItemChanges="@CommittedItemChanges"
+    Bordered="true" Dense="true" EditTrigger="@(_editTriggerRowClick ? DataGridEditTrigger.OnRowClick : DataGridEditTrigger.Manual)">
+    <Columns>
+        <Column T="Imagen" Field="idImagen" Title="ID"/>
+        <Column T="Imagen" Field="nombre" Title="Nombre de la Obra"/>
+        <Column T="Imagen" Field="fotografo" Title="Creador"/>
+        <Column T="Imagen" Field="pais"Title="País"/>
+        <Column T="Imagen" Field="fecha"Title="Fecha"/>
+        <Column T="Imagen" Field="descripcion" Title="Descripción"/>
+        <Column T="Imagen" Hidden="@(_isCellEditMode || _readOnly || _editTriggerRowClick)" CellClass="d-flex justify-end">
+            <CellTemplate>
+                <MudIconButton Size="@Size.Small" Icon="@Icons.Outlined.Edit" OnClick="@context.Actions.StartEditingItem" />
+                <MudIconButton Size="@Size.Small" Icon="@Icons.Filled.Delete" OnClick="(args)=> EliminarEvento(context.Item)" />
+            </CellTemplate>
+        </Column>
+    </Columns>
+</MudDataGrid>
+
+@code {
+    private IEnumerable<Imagen> imagens = new List<Imagen>();
+    private bool _readOnly;
+    private bool _isCellEditMode;
+    private List<string> _events = new();
+    private bool _editTriggerRowClick;
+
+    [Inject] private ISnackbar SnackBarService { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var Imageen = new List<Imagen>();
+        _client.BaseAddress = new("https://localhost:7174/");
+
+        var requestMessage = new HttpRequestMessage(HttpMethod.Get, "Biblioteca/ConsultaImagen");
+        var respuesta = await _client.SendAsync(requestMessage);
+
+        if(respuesta.StatusCode == System.Net.HttpStatusCode.OK)
+        {
+            var responseBody = await respuesta.Content.ReadAsStringAsync();
+            var listasImagen = System.Text.Json.JsonSerializer.Deserialize<List<Imagen>>(responseBody);
+            imagens = listasImagen;
+        }
+
+        imagens = Imageen;
+
+    }
+
+    void EliminarEvento(Imagen item)
+    {
+        SnackBarService.Add("Eliminado ._.", Severity.Warning);
+        ((List<Imagen>)imagens).Remove(item);
+    }
+
+    void AgregarNuevoRegistro()
+    {
+        SnackBarService.Add("Añadido :o", Severity.Success);
+        var Imageen = new Imagen
+            {
+                nombre = "Nueva Imagen"
+            };
+            ((List<Imagen>)imagens).Add(Imageen);
+            StateHasChanged();
+    }
+
+    // events
+    void StartedEditingItem(Imagen item)
+    {
+        _events.Insert(0, $"Event = StartedEditingItem, Data = {System.Text.Json.JsonSerializer.Serialize(item)}");
+    }
+
+    void CancelledEditingItem(Imagen item)
+    {
+        _events.Insert(0, $"Event = CancelledEditingItem, Data = {System.Text.Json.JsonSerializer.Serialize(item)}");
+    }
+
+    void CommittedItemChanges(Imagen item)
+    {
+        _events.Insert(0, $"Event = CommittedItemChanges, Data = {System.Text.Json.JsonSerializer.Serialize(item)}");
+    }
+
+
+
+}
